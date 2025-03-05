@@ -5,19 +5,22 @@ from .model import SubtleDetailCNN
 from .data_loader import CustomImageDataset
 import pandas as pd
 
+from tqdm import tqdm  # Import tqdm
+
 def train_model(model, train_loader, criterion, optimizer, num_epochs=20, dataset_name="mnist"):
     best_loss = float('inf')
+    
+    # Outer loop for epochs
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
-        for i, (inputs, labels) in enumerate(train_loader):
+        
+        # Wrap the train_loader with tqdm for a progress bar
+        train_loader_tqdm = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}", leave=False)
+        
+        for inputs, labels in train_loader_tqdm:
             optimizer.zero_grad()
             outputs, features = model(inputs)
-            
-            # Print shapes only for the first batch of the first epoch
-            if epoch == 0 and i == 0:
-                print(f"Outputs shape: {outputs.shape}")
-                print(f"Labels shape: {labels.shape}")
             
             # Ensure labels are a tensor
             if not isinstance(labels, torch.Tensor):
@@ -30,15 +33,22 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=20, datase
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
+            
+            # Update running loss
             running_loss += loss.item()
-
+            
+            # Update the progress bar description with the current loss
+            train_loader_tqdm.set_postfix(loss=loss.item())
+        
+        # Calculate epoch loss
         epoch_loss = running_loss / len(train_loader)
-        print(f'Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss}')
-
+        print(f'Epoch {epoch + 1}/{num_epochs}, Loss: {epoch_loss}')
+        
         # Save the best model
         if epoch_loss < best_loss:
             best_loss = epoch_loss
             torch.save(model.state_dict(), f'data/{dataset_name}/models/best_model.pth')
+            
             # Save features to CSV
             features_np = features.detach().numpy()
             df = pd.DataFrame(features_np, columns=[f"feature_{i}" for i in range(128)])
