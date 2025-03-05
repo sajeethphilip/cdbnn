@@ -3,6 +3,7 @@ import shutil
 import requests
 import tarfile
 import zipfile
+import gzip
 from urllib.parse import urlparse
 from PIL import Image
 import numpy as np
@@ -17,6 +18,14 @@ def load_image(file_path):
     elif file_path.endswith('.fits'):
         hdul = fits.open(file_path)
         image = hdul[0].data
+    elif file_path.endswith('.gz'):
+        with gzip.open(file_path, 'rb') as f:
+            image = np.frombuffer(f.read(), dtype=np.uint8)
+        # Handle MNIST .gz files specifically
+        if 'idx3-ubyte' in file_path:  # MNIST image file
+            image = image[16:].reshape(-1, 28, 28)
+        elif 'idx1-ubyte' in file_path:  # MNIST label file
+            image = image[8:]
     else:
         image = Image.open(file_path)
         image = np.array(image)
@@ -51,11 +60,25 @@ def download_and_extract(url, extract_dir):
     elif filename.endswith('.zip'):
         with zipfile.ZipFile(filepath, 'r') as zip_ref:
             zip_ref.extractall(path=extract_dir)
+    elif filename.endswith('.gz'):
+        with gzip.open(filepath, 'rb') as f_in:
+            with open(filepath[:-3], 'wb') as f_out:  # Remove .gz extension
+                shutil.copyfileobj(f_in, f_out)
     else:
         raise ValueError(f"Unsupported file format: {filename}")
 
     # Remove the downloaded file
     os.remove(filepath)
+
+def find_image_folders(root_dir):
+    """Recursively find folders containing images."""
+    image_folders = []
+    for dirpath, _, filenames in os.walk(root_dir):
+        for filename in filenames:
+            if filename.endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.dcm', '.fits')):
+                image_folders.append(dirpath)
+                break
+    return image_folders
 
 def infer_classes_from_folder(folder):
     """Infer class labels from subfolders in the given folder."""
@@ -103,4 +126,9 @@ def prepare_dataset(data_path, dataset_name):
                 shutil.move(src, dst)
             shutil.rmtree(test_subdir)
 
-    return train_dir
+    # Find image folders
+    image_folders = find_image_folders(train_dir)
+    if not image_folders:
+        raise ValueError("No image folders found in the dataset.")
+
+    return image_folders[0]  # Use the first image folder found
