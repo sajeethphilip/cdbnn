@@ -9,6 +9,13 @@ from PIL import Image
 import numpy as np
 import pydicom
 from astropy.io import fits
+import torchvision.datasets as datasets
+import torchvision.transforms as transforms
+import torch
+from tqdm import tqdm
+import logging
+
+logger = logging.getLogger(__name__)
 
 def load_image(file_path):
     """Load an image from a file and return it as a numpy array."""
@@ -83,6 +90,60 @@ def infer_classes_from_folder(folder):
     subfolders = [f for f in os.listdir(folder) if os.path.isdir(os.path.join(folder, f))]
     return sorted(subfolders)
 
+def _process_torchvision(dataset_name, output_dir):
+    """Process torchvision dataset."""
+    if not hasattr(datasets, dataset_name):
+        raise ValueError(f"Torchvision dataset {dataset_name} not found")
+
+    # Setup paths in dataset-specific directory
+    train_dir = os.path.join(output_dir, "train")
+    test_dir = os.path.join(output_dir, "test")
+    os.makedirs(train_dir, exist_ok=True)
+    os.makedirs(test_dir, exist_ok=True)
+
+    # Download and process datasets
+    transform = transforms.ToTensor()
+
+    train_dataset = getattr(datasets, dataset_name)(
+        root=output_dir,
+        train=True,
+        download=True,
+        transform=transform
+    )
+
+    test_dataset = getattr(datasets, dataset_name)(
+        root=output_dir,
+        train=False,
+        download=True,
+        transform=transform
+    )
+
+    # Save images with class directories
+    def save_dataset_images(dataset, output_dir, split_name):
+        logger.info(f"Processing {split_name} split...")
+
+        class_to_idx = getattr(dataset, 'class_to_idx', None)
+        if class_to_idx:
+            idx_to_class = {v: k for k, v in class_to_idx.items()}
+
+        with tqdm(total=len(dataset), desc=f"Saving {split_name} images") as pbar:
+            for idx, (img, label) in enumerate(dataset):
+                class_name = idx_to_class[label] if class_to_idx else str(label)
+                class_dir = os.path.join(output_dir, class_name)
+                os.makedirs(class_dir, exist_ok=True)
+
+                if isinstance(img, torch.Tensor):
+                    img = transforms.ToPILImage()(img)
+
+                img_path = os.path.join(class_dir, f"{idx}.png")
+                img.save(img_path)
+                pbar.update(1)
+
+    save_dataset_images(train_dataset, train_dir, "training")
+    save_dataset_images(test_dataset, test_dir, "test")
+
+    return train_dir, test_dir
+
 def prepare_dataset(data_path, dataset_name):
     """Prepare the dataset by downloading, extracting, and organizing it."""
     data_dir = os.path.join("data", dataset_name)
@@ -100,15 +161,9 @@ def prepare_dataset(data_path, dataset_name):
     else:
         # Check if the dataset is available in PyTorch
         try:
-            import torchvision.datasets as datasets
-            dataset_class = getattr(datasets, dataset_name.upper(), None)
-            if dataset_class:
-                dataset = dataset_class(root=data_dir, train=True, download=True)
-                return os.path.join(data_dir, dataset_name.upper())
-            else:
-                raise ValueError(f"Dataset {dataset_name} not found in PyTorch.")
-        except ImportError:
-            raise ValueError("PyTorch is required to download standard datasets.")
+            return _process_torchvision(dataset_name, data_dir)
+        except ValueError as e:
+            raise ValueError(f"Dataset {dataset_name} not found in PyTorch: {e}")
 
     # Recursively find the folder containing images
     images_folder = find_images_folder(train_dir)
