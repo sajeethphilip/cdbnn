@@ -3,6 +3,7 @@ from cdbnn.data_loader import CustomImageDataset
 from cdbnn.model import SubtleDetailCNN
 from cdbnn.train import train_model
 from cdbnn.config_generator import generate_config_json, generate_output_json
+from cdbnn.utils import prepare_dataset
 import torch
 import torch.optim as optim
 import torch.nn as nn
