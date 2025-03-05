@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from .model import SubtleDetailCNN
-from .data_loader import CustomImageDataset, get_transform
+from .data_loader import CustomImageDataset
 import pandas as pd
 
 def train_model(model, train_loader, criterion, optimizer, num_epochs=20, dataset_name="mnist"):
@@ -27,4 +27,6 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=20, datase
             torch.save(model.state_dict(), f'data/{dataset_name}/models/best_model.pth')
             # Save features to CSV
             features_np = features.detach().numpy()
-            pd.DataFrame(features_np).to_csv(f'data/{dataset_name}/{dataset_name}.csv', index=False)
+            df = pd.DataFrame(features_np, columns=[f"feature_{i}" for i in range(128)])
+            df["target"] = labels.numpy()
+            df.to_csv(f'data/{dataset_name}/{dataset_name}.csv', index=False)
