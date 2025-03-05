@@ -22,6 +22,7 @@ class ConfigGenerator:
         """Detect image properties (input size and number of channels)."""
         # Example: Load the first image to detect properties
         first_image_path = os.path.join(train_dir, os.listdir(train_dir)[0])
+        print(first_image_path)
         image = Image.open(first_image_path)
         image = np.array(image)
 
