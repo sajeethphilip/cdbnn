@@ -1,15 +1,17 @@
 import json
+import os
 
-def generate_config_json(image_shape, num_classes, dataset_name):
+def generate_config_json(dataset_name, image_shape, num_classes):
+    """Generate the processing JSON file."""
     config = {
         "dataset": {
             "name": dataset_name,
             "type": "custom",
-            "in_channels": 1,
+            "in_channels": image_shape[0],
             "num_classes": num_classes,
-            "input_size": list(image_shape),
-            "mean": [0.5],
-            "std": [0.5],
+            "input_size": list(image_shape[1:]),
+            "mean": [0.5] * image_shape[0],
+            "std": [0.5] * image_shape[0],
             "train_dir": f"data/{dataset_name}/train",
             "test_dir": f"data/{dataset_name}/test"
         },
@@ -73,8 +75,8 @@ def generate_config_json(image_shape, num_classes, dataset_name):
             },
             "normalize": {
                 "enabled": True,
-                "mean": [0.5],
-                "std": [0.5]
+                "mean": [0.5] * image_shape[0],
+                "std": [0.5] * image_shape[0]
             }
         },
         "execution_flags": {
@@ -93,5 +95,20 @@ def generate_config_json(image_shape, num_classes, dataset_name):
         }
     }
 
+    os.makedirs(f"data/{dataset_name}", exist_ok=True)
     with open(f'data/{dataset_name}/{dataset_name}.json', 'w') as f:
         json.dump(config, f, indent=4)
+
+def generate_output_json(dataset_name, image_shape, num_classes):
+    """Generate the output JSON file."""
+    output_config = {
+        "dataset_name": dataset_name,
+        "image_shape": image_shape,
+        "num_classes": num_classes,
+        "output_format": {
+            "csv_columns": [f"feature_{i}" for i in range(128)] + ["target"]
+        }
+    }
+
+    with open(f'data/{dataset_name}/{dataset_name}_output.json', 'w') as f:
+        json.dump(output_config, f, indent=4)
