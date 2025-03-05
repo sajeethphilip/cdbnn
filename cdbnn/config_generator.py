@@ -4,6 +4,8 @@ import numpy as np
 import torch
 from tqdm import tqdm
 import logging
+from typing import Tuple, Dict  # Import Tuple and Dict from typing
+from PIL import Image  # Import Image for image processing
 
 logger = logging.getLogger(__name__)
 
