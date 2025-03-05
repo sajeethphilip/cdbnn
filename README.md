@@ -13,5 +13,4 @@ This repository contains a PyTorch implementation of a 7-layer Convolutional Neu
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/cnn-subtle-detail-detection.git
-   cd cnn-subtle-detail-detection
+   git clone https://github.com/sajeethphilip/cdbnn.git
