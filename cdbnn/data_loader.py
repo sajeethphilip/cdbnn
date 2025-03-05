@@ -16,6 +16,12 @@ class CustomImageDataset(Dataset):
             raise ValueError(f"No image files found in the dataset directory: {img_dir}")
         self.image_properties = self._get_image_properties()
 
+        # Define a default transform if none is provided
+        if self.transform is None:
+            self.transform = transforms.Compose([
+                transforms.ToTensor()  # Convert PIL Image to PyTorch Tensor
+            ])
+
     def _get_image_files(self):
         """Get a list of all image files in the dataset."""
         img_files = []
