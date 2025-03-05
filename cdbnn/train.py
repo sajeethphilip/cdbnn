@@ -10,13 +10,14 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=20, datase
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
-        for inputs, labels in train_loader:
+        for i, (inputs, labels) in enumerate(train_loader):
             optimizer.zero_grad()
             outputs, features = model(inputs)
             
-            # Debug shapes
-            print(f"Outputs shape: {outputs.shape}")
-            print(f"Labels shape: {labels.shape}")
+            # Print shapes only for the first batch of the first epoch
+            if epoch == 0 and i == 0:
+                print(f"Outputs shape: {outputs.shape}")
+                print(f"Labels shape: {labels.shape}")
             
             # Ensure labels are a tensor
             if not isinstance(labels, torch.Tensor):
