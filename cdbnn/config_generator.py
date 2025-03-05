@@ -3,18 +3,15 @@ import os
 
 def generate_config_json(dataset_name, image_shape, num_classes):
     """Generate the processing JSON file."""
-    # Extract the number of channels from image_shape
-    in_channels = image_shape[0] if len(image_shape) == 3 else 1  # Handle grayscale images
-
     config = {
         "dataset": {
             "name": dataset_name,
             "type": "custom",
-            "in_channels": in_channels,
+            "in_channels": image_shape[0],
             "num_classes": num_classes,
-            "input_size": list(image_shape[1:]),  # Height and width
-            "mean": [0.5] * in_channels,  # Mean for each channel
-            "std": [0.5] * in_channels,   # Std for each channel
+            "input_size": list(image_shape[1:]),
+            "mean": [0.5] * image_shape[0],
+            "std": [0.5] * image_shape[0],
             "train_dir": f"data/{dataset_name}/train_data",
             "test_dir": f"data/{dataset_name}/test_data"
         },
@@ -78,8 +75,8 @@ def generate_config_json(dataset_name, image_shape, num_classes):
             },
             "normalize": {
                 "enabled": True,
-                "mean": [0.5] * in_channels,
-                "std": [0.5] * in_channels
+                "mean": [0.5] * image_shape[0],
+                "std": [0.5] * image_shape[0]
             }
         },
         "execution_flags": {
@@ -101,3 +98,17 @@ def generate_config_json(dataset_name, image_shape, num_classes):
     os.makedirs(f"data/{dataset_name}", exist_ok=True)
     with open(f'data/{dataset_name}/{dataset_name}.json', 'w') as f:
         json.dump(config, f, indent=4)
+
+def generate_output_json(dataset_name, image_shape, num_classes):
+    """Generate the output JSON file."""
+    output_config = {
+        "dataset_name": dataset_name,
+        "image_shape": image_shape,
+        "num_classes": num_classes,
+        "output_format": {
+            "csv_columns": [f"feature_{i}" for i in range(128)] + ["target"]
+        }
+    }
+
+    with open(f'data/{dataset_name}/{dataset_name}_output.json', 'w') as f:
+        json.dump(output_config, f, indent=4)
