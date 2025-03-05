@@ -22,6 +22,10 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=20, datase
             if not isinstance(labels, torch.Tensor):
                 labels = torch.tensor(labels, dtype=torch.long)
             
+            # Check for empty labels
+            if labels.numel() == 0:
+                raise ValueError("Labels tensor is empty. Check the dataset and DataLoader.")
+            
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -39,4 +43,3 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=20, datase
             df = pd.DataFrame(features_np, columns=[f"feature_{i}" for i in range(128)])
             df["target"] = labels.numpy()
             df.to_csv(f'data/{dataset_name}/{dataset_name}.csv', index=False)
-            
