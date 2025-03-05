@@ -94,6 +94,7 @@ def infer_classes_from_folder(folder):
 
 def _process_torchvision(dataset_name, output_dir):
     """Process torchvision dataset."""
+    dataset_name=dataset_name.upper()
     if not hasattr(datasets, dataset_name):
         raise ValueError(f"Torchvision dataset {dataset_name} not found")
 
