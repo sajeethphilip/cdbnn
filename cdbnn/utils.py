@@ -87,12 +87,13 @@ def find_images_folder(root_dir):
 
 def infer_classes_from_folder(folder):
     """Infer class labels from subfolders in the given folder."""
+    if not os.path.isdir(folder):
+        raise ValueError(f"Invalid folder path: {folder}")
     subfolders = [f for f in os.listdir(folder) if os.path.isdir(os.path.join(folder, f))]
     return sorted(subfolders)
 
 def _process_torchvision(dataset_name, output_dir):
     """Process torchvision dataset."""
-    dataset_name=dataset_name.upper()
     if not hasattr(datasets, dataset_name):
         raise ValueError(f"Torchvision dataset {dataset_name} not found")
 
@@ -143,7 +144,7 @@ def _process_torchvision(dataset_name, output_dir):
     save_dataset_images(train_dataset, train_dir, "training")
     save_dataset_images(test_dataset, test_dir, "test")
 
-    return train_dir, test_dir
+    return train_dir  # Return only the train directory
 
 def prepare_dataset(data_path, dataset_name):
     """Prepare the dataset by downloading, extracting, and organizing it."""
