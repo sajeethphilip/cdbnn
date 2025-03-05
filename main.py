@@ -8,6 +8,7 @@ import os
 import torch.optim as optim
 import torch.nn as nn
 
+
 def main():
     parser = argparse.ArgumentParser(description="Train a CNN model for image classification.")
     parser.add_argument("--dataset", type=str, required=True, help="Name or path of the dataset.")
@@ -17,7 +18,12 @@ def main():
     # Prepare the dataset
     dataset_name = args.dataset
     dataset_dir = os.path.join("data", dataset_name)
-    train_dir = os.path.join(dataset_dir, "train_data")
+    train_dir = os.path.join(dataset_dir, "train")  # Point to the "train" folder
+    test_dir = os.path.join(dataset_dir, "test")    # Point to the "test" folder
+
+    # Ensure the train directory exists
+    if not os.path.exists(train_dir):
+        raise FileNotFoundError(f"Train directory not found: {train_dir}")
 
     # Generate configurations
     config_generator = ConfigGenerator(dataset_name, dataset_dir)
@@ -38,3 +44,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
