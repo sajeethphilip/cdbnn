@@ -4,6 +4,7 @@ from cdbnn.model import SubtleDetailCNN
 from cdbnn.train import train_model
 from cdbnn.config_generator  import ConfigGenerator
 import torch
+import os
 import torch.optim as optim
 import torch.nn as nn
 
