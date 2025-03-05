@@ -70,6 +70,21 @@ def download_and_extract(url, extract_dir):
     # Remove the downloaded file
     os.remove(filepath)
 
+def extract_until_images(root_dir):
+    """Recursively extract files until we find a folder containing images."""
+    for dirpath, _, filenames in os.walk(root_dir):
+        for filename in filenames:
+            if filename.endswith('.gz'):
+                filepath = os.path.join(dirpath, filename)
+                print(f"Extracting {filepath}...")
+                with gzip.open(filepath, 'rb') as f_in:
+                    with open(filepath[:-3], 'wb') as f_out:  # Remove .gz extension
+                        shutil.copyfileobj(f_in, f_out)
+                os.remove(filepath)
+            elif filename.endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.dcm', '.fits')):
+                return dirpath  # Found a folder containing images
+    return None
+
 def find_image_folders(root_dir):
     """Recursively find folders containing images."""
     image_folders = []
@@ -112,23 +127,11 @@ def prepare_dataset(data_path, dataset_name):
         except ImportError:
             raise ValueError("PyTorch is required to download standard datasets.")
 
-    # Merge train and test folders if they exist
-    train_subdir = os.path.join(train_dir, "train")
-    test_subdir = os.path.join(train_dir, "test")
-    if os.path.exists(train_subdir) and os.path.exists(test_subdir):
-        merge = input("Found train and test folders. Merge them? (y/n): ").lower() == 'y'
-        if merge:
-            for class_folder in os.listdir(test_subdir):
-                src = os.path.join(test_subdir, class_folder)
-                dst = os.path.join(train_subdir, class_folder)
-                if os.path.exists(dst):
-                    shutil.rmtree(dst)
-                shutil.move(src, dst)
-            shutil.rmtree(test_subdir)
-
-    # Find image folders
-    image_folders = find_image_folders(train_dir)
-    if not image_folders:
+    # Extract files iteratively until we find the images folder
+    images_folder = extract_until_images(train_dir)
+    if not images_folder:
         raise ValueError(f"No image folders found in the dataset directory: {train_dir}")
 
-    return image_folders[0]  # Use the first image folder found
+    # Backtrack one step to find the class labels
+    class_folder = os.path.dirname(images_folder)
+    return class_folder
