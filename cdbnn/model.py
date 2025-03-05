@@ -12,7 +12,7 @@ class SubtleDetailCNN(nn.Module):
         self.conv6 = nn.Conv2d(512, 1024, kernel_size=3, stride=1, padding=1)
         self.conv7 = nn.Conv2d(1024, 128, kernel_size=3, stride=1, padding=1)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        self.fc1 = nn.Linear(128 * 7 * 7, 128)  # Assuming input size is 224x224
+        self.fc1 = nn.Linear(128 * 8 * 8, 128)  # Adjusted for 512x512 input
         self.fc2 = nn.Linear(128, num_classes)
 
     def forward(self, x):
@@ -23,7 +23,7 @@ class SubtleDetailCNN(nn.Module):
         x = self.pool(torch.relu(self.conv5(x)))
         x = self.pool(torch.relu(self.conv6(x)))
         x = torch.relu(self.conv7(x))
-        x = x.view(-1, 128 * 7 * 7)
+        x = x.view(-1, 128 * 8 * 8)  # Adjusted for 512x512 input
         features = torch.relu(self.fc1(x))
         x = self.fc2(features)
         return x, features
