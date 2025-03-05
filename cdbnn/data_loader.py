@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from PIL import Image
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from .utils import load_image, get_image_properties, prepare_dataset, infer_classes_from_folder
