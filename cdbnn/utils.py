@@ -129,6 +129,6 @@ def prepare_dataset(data_path, dataset_name):
     # Find image folders
     image_folders = find_image_folders(train_dir)
     if not image_folders:
-        raise ValueError("No image folders found in the dataset.")
+        raise ValueError(f"No image folders found in the dataset directory: {train_dir}")
 
     return image_folders[0]  # Use the first image folder found
