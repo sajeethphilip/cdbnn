@@ -14,7 +14,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "mnist_cnn=main:main"
+            "cdbnn=main:main"
         ]
     }
 )
