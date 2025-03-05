@@ -24,7 +24,6 @@ class CustomImageDataset(Dataset):
                 transforms.ToTensor()          # Convert PIL Image to PyTorch Tensor
             ])
 
-
     def _get_image_files(self):
         """Get a list of all image files in the dataset."""
         img_files = []
@@ -41,37 +40,27 @@ class CustomImageDataset(Dataset):
                     print(f"Warning: Skipping unsupported file: {file_path}")
         return img_files
 
-    def _get_image_properties(self):
-        """Get the properties of the first image in the dataset."""
-        first_image_path = self.img_files[0][0]
-        first_image = load_image(first_image_path)
-
-        # Ensure the image has 3 dimensions (channels, height, width)
-        if len(first_image.shape) == 2:  # Grayscale image
-            first_image = np.expand_dims(first_image, axis=0)  # Add channel dimension
-        elif len(first_image.shape) == 3 and first_image.shape[2] == 3:  # RGB image
-            first_image = np.transpose(first_image, (2, 0, 1))  # Convert to (channels, height, width)
-        else:
-            raise ValueError(f"Unsupported image shape: {first_image.shape}")
-
-        return get_image_properties(first_image)
-
     def __len__(self):
         return len(self.img_files)
 
     def __getitem__(self, idx):
         img_path, label = self.img_files[idx]
         image = load_image(img_path)
-    
+
         # Convert grayscale images to 3 channels if needed
         if len(image.shape) == 2:
             image = np.stack([image] * 3, axis=-1)
-    
+
         # Convert to PIL Image for transformations
         image = Image.fromarray(image)
-    
+
         if self.transform:
             image = self.transform(image)
+
+        # Convert label to a tensor
+        label = torch.tensor(label, dtype=torch.long)
+
+        return image, label
     
         # Convert label to a tensor
         label = torch.tensor(label, dtype=torch.long)
