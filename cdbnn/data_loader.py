@@ -61,15 +61,18 @@ class CustomImageDataset(Dataset):
     def __getitem__(self, idx):
         img_path, label = self.img_files[idx]
         image = load_image(img_path)
-
+    
         # Convert grayscale images to 3 channels if needed
         if len(image.shape) == 2:
             image = np.stack([image] * 3, axis=-1)
-
+    
         # Convert to PIL Image for transformations
         image = Image.fromarray(image)
-
+    
         if self.transform:
             image = self.transform(image)
-
+    
+        # Convert label to a tensor
+        label = torch.tensor(label, dtype=torch.long)
+    
         return image, label
