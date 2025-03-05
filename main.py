@@ -1,8 +1,8 @@
 import argparse
-from mnist_cnn.data_loader import CustomImageDataset
-from mnist_cnn.model import SubtleDetailCNN
-from mnist_cnn.train import train_model
-from mnist_cnn.config_generator import generate_config_json, generate_output_json
+from cdbnn.data_loader import CustomImageDataset
+from cdbnn.model import SubtleDetailCNN
+from cdbnn.train import train_model
+from cdbnn.config_generator import generate_config_json, generate_output_json
 import torch
 import torch.optim as optim
 import torch.nn as nn
