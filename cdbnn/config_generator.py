@@ -12,8 +12,8 @@ def generate_config_json(dataset_name, image_shape, num_classes):
             "input_size": list(image_shape[1:]),
             "mean": [0.5] * image_shape[0],
             "std": [0.5] * image_shape[0],
-            "train_dir": f"data/{dataset_name}/train",
-            "test_dir": f"data/{dataset_name}/test"
+            "train_dir": f"data/{dataset_name}/train_data",
+            "test_dir": f"data/{dataset_name}/test_data"
         },
         "model": {
             "encoder_type": "cnn",
