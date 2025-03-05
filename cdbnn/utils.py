@@ -70,30 +70,13 @@ def download_and_extract(url, extract_dir):
     # Remove the downloaded file
     os.remove(filepath)
 
-def extract_until_images(root_dir):
-    """Recursively extract files until we find a folder containing images."""
-    for dirpath, _, filenames in os.walk(root_dir):
-        for filename in filenames:
-            if filename.endswith('.gz'):
-                filepath = os.path.join(dirpath, filename)
-                print(f"Extracting {filepath}...")
-                with gzip.open(filepath, 'rb') as f_in:
-                    with open(filepath[:-3], 'wb') as f_out:  # Remove .gz extension
-                        shutil.copyfileobj(f_in, f_out)
-                os.remove(filepath)
-            elif filename.endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.dcm', '.fits')):
-                return dirpath  # Found a folder containing images
-    return None
-
-def find_image_folders(root_dir):
-    """Recursively find folders containing images."""
-    image_folders = []
+def find_images_folder(root_dir):
+    """Recursively find the folder containing image files."""
     for dirpath, _, filenames in os.walk(root_dir):
         for filename in filenames:
             if filename.endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.dcm', '.fits')):
-                image_folders.append(dirpath)
-                break
-    return image_folders
+                return dirpath  # Found a folder containing images
+    return None
 
 def infer_classes_from_folder(folder):
     """Infer class labels from subfolders in the given folder."""
@@ -127,8 +110,8 @@ def prepare_dataset(data_path, dataset_name):
         except ImportError:
             raise ValueError("PyTorch is required to download standard datasets.")
 
-    # Extract files iteratively until we find the images folder
-    images_folder = extract_until_images(train_dir)
+    # Recursively find the folder containing images
+    images_folder = find_images_folder(train_dir)
     if not images_folder:
         raise ValueError(f"No image folders found in the dataset directory: {train_dir}")
 
