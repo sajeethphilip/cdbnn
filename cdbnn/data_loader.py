@@ -19,7 +19,8 @@ class CustomImageDataset(Dataset):
         for cls in self.classes:
             cls_dir = os.path.join(self.img_dir, cls)
             for file in os.listdir(cls_dir):
-                img_files.append((os.path.join(cls_dir, file), self.class_to_idx[cls]))
+                if file.endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.dcm', '.fits')):
+                    img_files.append((os.path.join(cls_dir, file), self.class_to_idx[cls]))
         return img_files
 
     def _get_image_properties(self):
