@@ -19,8 +19,10 @@ class CustomImageDataset(Dataset):
         # Define a default transform if none is provided
         if self.transform is None:
             self.transform = transforms.Compose([
-                transforms.ToTensor()  # Convert PIL Image to PyTorch Tensor
+                transforms.Resize((224, 224)),  # Resize images to 224x224
+                transforms.ToTensor()          # Convert PIL Image to PyTorch Tensor
             ])
+
 
     def _get_image_files(self):
         """Get a list of all image files in the dataset."""
