@@ -21,7 +21,8 @@ class ConfigGenerator:
     def _detect_image_properties(self, train_dir: str) -> Tuple[Tuple[int, int], int]:
         """Detect image properties (input size and number of channels)."""
         # Example: Load the first image to detect properties
-        first_image_path = os.path.join(train_dir,os.listdir( f"{train_dir}/{[0]}/{[0]}"))
+        first_subfolder = os.listdir(train_dir)[0]  # Get the first subfolder name
+        first_image_path = os.path.join(train_dir, first_subfolder, os.listdir(os.path.join(train_dir, first_subfolder))[0])
         print(first_image_path,os.listdir(train_dir)[0],train_dir)
         image = Image.open(first_image_path)
         image = np.array(image)
