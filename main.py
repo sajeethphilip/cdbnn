@@ -33,7 +33,7 @@ def main():
     train_dataset = CustomImageDataset(img_dir=train_dir, transform=None)
     image_shape = train_dataset.image_properties
     num_classes = len(train_dataset.classes)
-    print(f"The number of channels input is {in_channels}")
+    print(f"The number of channels input is {image_shape[0]}")
     # Initialize model, optimizer, and loss function
     model = SubtleDetailCNN(in_channels=image_shape[0], num_classes=num_classes)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
