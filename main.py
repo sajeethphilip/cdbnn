@@ -8,6 +8,7 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 
+
 def main():
     parser = argparse.ArgumentParser(description="Train a CNN model for image classification.")
     parser.add_argument("--dataset", type=str, required=True, help="Name or path of the dataset.")
