@@ -13,6 +13,10 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=20, datase
         for inputs, labels in train_loader:
             optimizer.zero_grad()
             outputs, features = model(inputs)
+            
+            # Convert labels to torch.LongTensor
+            labels = torch.tensor(labels, dtype=torch.long)
+            
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -30,3 +34,4 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=20, datase
             df = pd.DataFrame(features_np, columns=[f"feature_{i}" for i in range(128)])
             df["target"] = labels.numpy()
             df.to_csv(f'data/{dataset_name}/{dataset_name}.csv', index=False)
+            
