@@ -14,8 +14,13 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=20, datase
             optimizer.zero_grad()
             outputs, features = model(inputs)
             
-            # Convert labels to torch.LongTensor
-            labels = torch.tensor(labels, dtype=torch.long)
+            # Debug shapes
+            print(f"Outputs shape: {outputs.shape}")
+            print(f"Labels shape: {labels.shape}")
+            
+            # Ensure labels are a tensor
+            if not isinstance(labels, torch.Tensor):
+                labels = torch.tensor(labels, dtype=torch.long)
             
             loss = criterion(outputs, labels)
             loss.backward()
