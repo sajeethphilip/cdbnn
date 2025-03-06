@@ -7,22 +7,25 @@ import torchvision.transforms as transforms
 from .utils import load_image, get_image_properties, prepare_dataset, infer_classes_from_folder
 
 class CustomImageDataset(Dataset):
-    def __init__(self, img_dir, transform=None):
+    def __init__(self, img_dir, transform=None, input_size=(224, 224)):
         self.img_dir = img_dir
-        self.transform = transform
+        self.input_size = input_size  # Default size that works with the model
+
+        # Create a transform that includes resizing
+        if transform is None:
+            self.transform = transforms.Compose([
+                transforms.Resize(self.input_size),
+                transforms.ToTensor()
+            ])
+        else:
+            self.transform = transform
+
         self.classes = infer_classes_from_folder(img_dir)
         self.class_to_idx = {cls: i for i, cls in enumerate(self.classes)}
         self.img_files = self._get_image_files()
         if not self.img_files:
             raise ValueError(f"No image files found in the dataset directory: {img_dir}")
         self.image_properties = self._get_image_properties()
-
-        # Define a default transform if none is provided
-        if self.transform is None:
-            self.transform = transforms.Compose([
-                transforms.Resize((512, 512)),  # Resize images to 512x512
-                transforms.ToTensor()          # Convert PIL Image to PyTorch Tensor
-            ])
 
     def _get_image_files(self):
         """Get a list of all image files in the dataset."""
@@ -40,43 +43,48 @@ class CustomImageDataset(Dataset):
                     print(f"Warning: Skipping unsupported file: {file_path}")
         return img_files
 
-    def __len__(self):
-        return len(self.img_files)
     def _get_image_properties(self):
         """Get the properties of the first image in the dataset."""
         first_image_path = self.img_files[0][0]
-        first_image = load_image(first_image_path)
+        try:
+            # Load as PIL Image for proper resizing
+            pil_image = Image.open(first_image_path).convert('RGB')
 
-        # Ensure the image has 3 dimensions (channels, height, width)
-        if len(first_image.shape) == 2:  # Grayscale image
-            first_image = np.expand_dims(first_image, axis=0)  # Add channel dimension
-        elif len(first_image.shape) == 3 and first_image.shape[2] == 3:  # RGB image
-            first_image = np.transpose(first_image, (2, 0, 1))  # Convert to (channels, height, width)
-        else:
-            raise ValueError(f"Unsupported image shape: {first_image.shape}")
+            # Check channels
+            if pil_image.mode == 'L':  # Grayscale
+                in_channels = 1
+            elif pil_image.mode == 'RGB':  # RGB
+                in_channels = 3
+            else:
+                in_channels = len(pil_image.getbands())
 
-        return get_image_properties(first_image)
+            return in_channels
+        except Exception as e:
+            print(f"Error reading first image: {e}")
+            # Default to 3 channels if there's an error
+            return 3
+
+    def __len__(self):
+        return len(self.img_files)
 
     def __getitem__(self, idx):
         img_path, label = self.img_files[idx]
-        image = load_image(img_path)
 
-        # Convert grayscale images to 3 channels if needed
-        if len(image.shape) == 2:
-            image = np.stack([image] * 3, axis=-1)
+        try:
+            # Load as PIL Image for better resizing
+            pil_image = Image.open(img_path)
 
-        # Convert to PIL Image for transformations
-        image = Image.fromarray(image)
+            # Convert grayscale to RGB if needed
+            if pil_image.mode == 'L':
+                pil_image = pil_image.convert('RGB')
 
-        if self.transform:
-            image = self.transform(image)
+            # Apply transformations (including resize)
+            image = self.transform(pil_image)
 
-        # Convert label to a tensor
-        label = torch.tensor(label, dtype=torch.long)
+            return image, label
 
-        return image, label
-    
-        # Convert label to a tensor
-        label = torch.tensor(label, dtype=torch.long)
-    
-        return image, label
+        except Exception as e:
+            print(f"Error processing image {img_path}: {e}")
+            # Return a blank image in case of error
+            blank = torch.zeros((3, self.input_size[0], self.input_size[1]), dtype=torch.float32)
+            return blank, label
