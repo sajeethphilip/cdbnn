@@ -3,24 +3,41 @@ from cdbnn.data_loader import CustomImageDataset
 from cdbnn.model import SubtleDetailCNN
 from cdbnn.train import train_model
 from cdbnn.config_generator  import ConfigGenerator
-from torch.utils.data import DataLoader, Dataset, ConcatDataset
+from cdbnn.utils import prepare_dataset
 import torch
 import os
 import torch.optim as optim
 import torch.nn as nn
-
+from torchvision import transforms
 
 def main():
-    parser = argparse.ArgumentParser(description="Train a CNN model for image classification.")
+    parser = argparse.ArgumentParser(description="Train, test, or predict using a CNN model for image classification.")
     parser.add_argument("--dataset", type=str, required=True, help="Name or path of the dataset.")
     parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs.")
+    parser.add_argument("--mode", type=str, choices=["train", "test", "predict"], default="train",
+                        help="Mode to run: train, test, or predict.")
+    parser.add_argument("--model_path", type=str, default=None,
+                        help="Path to the saved model for testing or prediction.")
+    parser.add_argument("--invert_DBNN", action="store_true", help="Enable inverse DBNN for image reconstruction.")
     args = parser.parse_args()
 
     # Prepare the dataset
     dataset_name = args.dataset
     dataset_dir = os.path.join("data", dataset_name)
-    train_dir = os.path.join(dataset_dir, "train")  # Point to the "train" folder
-    test_dir = os.path.join(dataset_dir, "test")    # Point to the "test" folder
+
+    # Check if the dataset exists locally
+    if not os.path.exists(dataset_dir):
+        print(f"Dataset '{dataset_name}' not found locally. Attempting to download...")
+        try:
+            # Use the prepare_dataset function to download and organize the dataset
+            dataset_dir = prepare_dataset(dataset_name, dataset_name)
+            print(f"Dataset '{dataset_name}' downloaded and organized at: {dataset_dir}")
+        except Exception as e:
+            raise ValueError(f"Failed to download or prepare dataset '{dataset_name}': {e}")
+
+    # Set train and test directories
+    train_dir = os.path.join(dataset_dir, "train")
+    test_dir = os.path.join(dataset_dir, "test")
 
     # Ensure the train directory exists
     if not os.path.exists(train_dir):
@@ -32,24 +49,57 @@ def main():
 
     # Load dataset to determine image properties and number of classes
     train_dataset = CustomImageDataset(img_dir=train_dir, transform=None)
-    image_shape = train_dataset.image_properties
+    in_channels = train_dataset.image_properties  # Fetch the number of channels
     num_classes = len(train_dataset.classes)
-    print(f"The number of channels input is {image_shape[0][0]}")
+    print(f"The number of channels input is {in_channels}")
 
-    # Initialize model, optimizer, and loss function
-    model = SubtleDetailCNN(in_channels=image_shape[0][0], num_classes=num_classes)
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    criterion = nn.CrossEntropyLoss()
+    # Initialize model with the correct in_channels
+    model = SubtleDetailCNN(in_channels=in_channels, num_classes=num_classes)
 
-    # Create DataLoader
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    # Determine device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
 
-    # Train the model
-    train_model(model, train_loader, criterion, optimizer, num_epochs=args.epochs, dataset_name=args.dataset)
+    if args.mode == "train":
+        # Initialize optimizer and loss function
+        optimizer = optim.Adam(model.parameters(), lr=0.001)
+        criterion = nn.CrossEntropyLoss()
+
+        # Train the model
+        train_model(model, train_dataset, criterion, optimizer, num_epochs=args.epochs,
+                    dataset_name=args.dataset, invert_DBNN=args.invert_DBNN)
+
+    elif args.mode == "test":
+        if args.model_path is None:
+            raise ValueError("Model path must be provided for testing.")
+
+        # Load the saved model
+        model.load_state_dict(torch.load(args.model_path))
+        model.eval()
+
+        # Test the model
+        test_dataset = CustomImageDataset(img_dir=test_dir, transform=None)
+        test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4)
+        test_loss, test_accuracy = test_model(model, test_loader, nn.CrossEntropyLoss(), device)
+        print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
+
+    elif args.mode == "predict":
+        if args.model_path is None:
+            raise ValueError("Model path must be provided for prediction.")
+
+        # Load the saved model
+        model.load_state_dict(torch.load(args.model_path))
+        model.eval()
+
+        # Perform prediction
+        predict_dataset = CustomImageDataset(img_dir=test_dir, transform=None)
+        predict_loader = DataLoader(predict_dataset, batch_size=32, shuffle=False, num_workers=4)
+        predictions = predict_model(model, predict_loader, device)
+
+        # Save predictions to a CSV file
+        predictions_path = os.path.join(dataset_dir, "predictions.csv")
+        pd.DataFrame(predictions, columns=["image_path", "predicted_class"]).to_csv(predictions_path, index=False)
+        print(f"Predictions saved to {predictions_path}")
 
 if __name__ == "__main__":
     main()
-
-if __name__ == "__main__":
-    main()
-
