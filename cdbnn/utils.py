@@ -14,6 +14,7 @@ import torchvision.transforms as transforms
 import torch
 from tqdm import tqdm
 import logging
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -176,3 +177,65 @@ def prepare_dataset(data_path, dataset_name):
     # Backtrack one step to find the class labels
     class_folder = os.path.dirname(images_folder)
     return class_folder
+
+
+def reconstruct_images(csv_path, model, output_dir, device):
+    """Reconstruct images from features in CSV file."""
+    df = pd.read_csv(csv_path)
+    features = df.drop(columns=['target']).values
+    labels = df['target'].values
+
+    model.eval()
+    os.makedirs(output_dir, exist_ok=True)
+
+    with torch.no_grad():
+        for i, (feature, label) in enumerate(zip(features, labels)):
+            feature_tensor = torch.tensor(feature, dtype=torch.float32).unsqueeze(0).to(device)
+            reconstructed_image = model(feature_tensor).squeeze(0).cpu().numpy()
+            reconstructed_image = (reconstructed_image * 255).astype(np.uint8)  # Scale to 0-255
+
+            # Create subfolder based on class label
+            class_dir = os.path.join(output_dir, str(label))
+            os.makedirs(class_dir, exist_ok=True)
+
+            # Save the reconstructed image
+            image_path = os.path.join(class_dir, f"reconstructed_{i}.png")
+            Image.fromarray(reconstructed_image.transpose(1, 2, 0)).save(image_path)
+
+    print(f"Reconstructed images saved to {output_dir}")
+
+def predict_model(model, predict_loader, device):
+    """Generate predictions for the input dataset."""
+    model.eval()
+    predictions = []
+
+    with torch.no_grad():
+        for inputs, _ in predict_loader:
+            inputs = inputs.to(device)
+            outputs, _ = model(inputs)
+            _, predicted = torch.max(outputs.data, 1)
+            predictions.extend(list(zip(predict_loader.dataset.img_files, predicted.cpu().numpy())))
+
+    return predictions
+
+def test_model(model, test_loader, criterion, device):
+    """Evaluate the model on the test dataset."""
+    model.eval()
+    test_loss = 0.0
+    correct = 0
+    total = 0
+
+    with torch.no_grad():
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs, _ = model(inputs)
+            loss = criterion(outputs, labels)
+            test_loss += loss.item()
+
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+    test_loss /= len(test_loader)
+    test_accuracy = correct / total
+    return test_loss, test_accuracy
