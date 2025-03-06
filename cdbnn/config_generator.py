@@ -42,15 +42,15 @@ class ConfigGenerator:
         input_size, in_channels = self._detect_image_properties(train_dir)
         class_dirs = [d for d in os.listdir(train_dir) if os.path.isdir(os.path.join(train_dir, d))]
         num_classes = len(class_dirs)
-    
+
         mean = [0.5] * in_channels  # Default mean for each channel
         std = [0.5] * in_channels   # Default std for each channel
         feature_dims = min(128, np.prod(input_size) // 4)
-    
+
         # Set train_dir and test_dir paths
         train_dir = os.path.join(self.dataset_dir, "train")
         test_dir = os.path.join(self.dataset_dir, "test")
-    
+
         config = {
             "dataset": {
                 "name": self.dataset_name,
@@ -208,6 +208,7 @@ class ConfigGenerator:
                 }
             },
             "training": {
+                "invert_DBNN": True,
                 "batch_size": 32,
                 "epochs": 20,
                 "num_workers": min(4, os.cpu_count() or 1),
