@@ -14,8 +14,6 @@ class SubtleDetailCNN(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
 
         # Calculate the size of the feature map after convolutions and pooling
-        # For 224x224 input, after 6 pooling layers: 224 -> 112 -> 56 -> 28 -> 14 -> 7 -> 3
-        # For 28x28 input (MNIST), after 3 pooling layers: 28 -> 14 -> 7 -> 3
         h, w = input_size
         for _ in range(6):  # 6 pooling layers
             h = (h + 1) // 2  # Integer division with ceiling
@@ -61,6 +59,20 @@ class SubtleDetailCNN(nn.Module):
         features = torch.relu(self.fc1(x))
         x = self.fc2(features)
         return x, features
+
+    def load_state_dict(self, state_dict, strict=True):
+        """Override load_state_dict to handle size mismatches in fc1."""
+        try:
+            super().load_state_dict(state_dict, strict)
+        except RuntimeError as e:
+            if "size mismatch" in str(e):
+                print("Warning: Size mismatch detected. Adjusting fc1 layer...")
+                # Adjust fc1 layer to match the saved state_dict
+                self.fc1 = nn.Linear(state_dict['fc1.weight'].shape[1], 128).to(next(self.parameters()).device)
+                # Retry loading the state_dict
+                super().load_state_dict(state_dict, strict=False)
+            else:
+                raise e
 
 
 class InverseSubtleDetailCNN(nn.Module):
