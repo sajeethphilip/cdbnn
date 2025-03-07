@@ -70,12 +70,22 @@ def main():
 
     # Determine mode from config if not specified in command line
     if args.mode is None:
-        if config["execution_flags"]["train"] and config["execution_flags"]["predict"]:
-            args.mode = "train"
-        elif config["execution_flags"]["train_only"]:
-            args.mode = "train"
-        elif config["execution_flags"]["predict"]:
-            args.mode = "predict"
+        # Ensure the execution_flags dictionary has the required keys
+        execution_flags = config.get("execution_flags", {})
+        train_flag = execution_flags.get("train", False)
+        train_only_flag = execution_flags.get("train_only", False)
+        predict_flag = execution_flags.get("predict", False)
+
+        # Determine the mode based on the flags
+        if train_flag and predict_flag:
+            args.mode = "train"  # Train and predict
+        elif train_only_flag:
+            args.mode = "train"  # Train only
+        elif predict_flag:
+            args.mode = "predict"  # Predict only
+        else:
+            args.mode = "train"  # Default to train if no flags are set
+
         print(f"Using mode from config: {args.mode}")
 
     if args.mode == "train":
