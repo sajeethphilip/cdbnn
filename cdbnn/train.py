@@ -79,6 +79,8 @@ def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, datas
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
+        correct = 0
+        total = 0
 
         # Use tqdm for progress tracking
         with tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}") as pbar:
@@ -98,14 +100,25 @@ def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, datas
 
                     # Update statistics
                     running_loss += loss.item()
-                    pbar.set_postfix({"loss": loss.item()})
+                    _, predicted = torch.max(outputs.data, 1)
+                    total += labels.size(0)
+                    correct += (predicted == labels).sum().item()
+
+                    # Update progress bar
+                    pbar.set_postfix({"loss": loss.item(), "accuracy": 100 * correct / total})
                 except Exception as e:
                     print(f"Error during training iteration: {e}")
                     continue
 
-        # Calculate epoch loss
+        # Calculate epoch loss and accuracy
         epoch_loss = running_loss / len(train_loader)
-        print(f'Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss:.4f}')
+        epoch_accuracy = 100 * correct / total
+        print(f'Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.2f}%')
+
+        # Check for early stopping conditions
+        if epoch_loss <= 0.000 or epoch_accuracy >= 100.0:
+            print(f"Early stopping: Loss = {epoch_loss:.4f}, Accuracy = {epoch_accuracy:.2f}%")
+            break
 
         # Validation if requested
         if validate and val_loader is not None:
@@ -151,6 +164,7 @@ def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, datas
         val_predictions, val_labels = get_predictions(model, val_loader, device)
         val_cm = confusion_matrix(val_labels, val_predictions)
         plot_confusion_matrix(val_cm, class_names=train_dataset.classes, title='Validation Confusion Matrix')
+
 
 
 def get_predictions(model, data_loader, device):
