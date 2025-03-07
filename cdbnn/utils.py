@@ -181,6 +181,11 @@ def prepare_dataset(data_path, dataset_name):
 
 def reconstruct_images(csv_path, model, output_dir, device):
     """Reconstruct images from features in CSV file."""
+    import pandas as pd
+    import numpy as np
+    from PIL import Image
+
+    # Read the CSV file
     df = pd.read_csv(csv_path)
     features = df.drop(columns=['target']).values
     labels = df['target'].values
