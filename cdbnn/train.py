@@ -1,13 +1,31 @@
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from .model import SubtleDetailCNN
+from .model import SubtleDetailCNN, InverseSubtleDetailCNN
 from .data_loader import CustomImageDataset
 import pandas as pd
 import os
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import numpy as np
 
-from .model import SubtleDetailCNN, InverseSubtleDetailCNN
+def plot_confusion_matrix(cm, class_names, title='Confusion Matrix'):
+    """
+    Plot a confusion matrix using seaborn and matplotlib.
+
+    Args:
+        cm (numpy.ndarray): Confusion matrix.
+        class_names (list): List of class names.
+        title (str): Title of the plot.
+    """
+    plt.figure(figsize=(10, 7))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+    plt.title(title)
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.show()
 
 def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, dataset_name="mnist",
                 batch_size=64, num_workers=4, device=None, validate=False, val_loader=None, invert_DBNN=False):
@@ -70,7 +88,6 @@ def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, datas
     best_loss = float('inf')
     os.makedirs(f'data/{dataset_name}/models', exist_ok=True)
     best_model_path = f'data/{dataset_name}/models/best_model.pth'
-
 
     # Use learning rate scheduler
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -155,6 +172,45 @@ def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, datas
             except Exception as e:
                 print(f"Error during inverse model creation: {e}")
 
+    # Plot confusion matrix for training data
+    print("Plotting confusion matrix for training data...")
+    train_predictions, train_labels = get_predictions(model, train_loader, device)
+    train_cm = confusion_matrix(train_labels, train_predictions)
+    plot_confusion_matrix(train_cm, class_names=train_dataset.classes, title='Training Confusion Matrix')
+
+    # Plot confusion matrix for validation/test data
+    if validate and val_loader is not None:
+        print("Plotting confusion matrix for validation data...")
+        val_predictions, val_labels = get_predictions(model, val_loader, device)
+        val_cm = confusion_matrix(val_labels, val_predictions)
+        plot_confusion_matrix(val_cm, class_names=train_dataset.classes, title='Validation Confusion Matrix')
+
+def get_predictions(model, data_loader, device):
+    """
+    Generate predictions and labels for a given data loader.
+
+    Args:
+        model: The trained model.
+        data_loader: DataLoader for the dataset.
+        device: Device to use (cpu or cuda).
+
+    Returns:
+        predictions: List of predicted labels.
+        labels: List of actual labels.
+    """
+    model.eval()
+    predictions = []
+    labels = []
+
+    with torch.no_grad():
+        for inputs, targets in data_loader:
+            inputs = inputs.to(device)
+            outputs, _ = model(inputs)
+            _, preds = torch.max(outputs, 1)
+            predictions.extend(preds.cpu().numpy())
+            labels.extend(targets.cpu().numpy())
+
+    return predictions, labels
 
 def save_features(model, data_loader, dataset_name, device):
     """Extract and save features from the model"""
