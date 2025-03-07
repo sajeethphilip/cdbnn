@@ -2,13 +2,14 @@ import argparse
 from cdbnn.data_loader import CustomImageDataset
 from cdbnn.model import SubtleDetailCNN
 from cdbnn.train import train_model
-from cdbnn.config_generator  import ConfigGenerator
-from cdbnn.utils import prepare_dataset
+from cdbnn.config_generator import ConfigGenerator
+from cdbnn.utils import prepare_dataset, reconstruct_images
 import torch
 import os
 import torch.optim as optim
 import torch.nn as nn
-from torchvision import transforms
+from torch.utils.data import DataLoader
+import pandas as pd
 
 def main():
     parser = argparse.ArgumentParser(description="Train, test, or predict using a CNN model for image classification.")
@@ -69,7 +70,12 @@ def main():
 
     # Determine mode from config if not specified in command line
     if args.mode is None:
-        args.mode = "train" if config["execution_flags"]["train"] else "predict"
+        if config["execution_flags"]["train"] and config["execution_flags"]["predict"]:
+            args.mode = "train"
+        elif config["execution_flags"]["train_only"]:
+            args.mode = "train"
+        elif config["execution_flags"]["predict"]:
+            args.mode = "predict"
         print(f"Using mode from config: {args.mode}")
 
     if args.mode == "train":
@@ -86,7 +92,7 @@ def main():
             csv_path = os.path.join(dataset_dir, f"{dataset_name}.csv")
             output_dir = os.path.join(dataset_dir, "reconstructed_images")
             os.makedirs(output_dir, exist_ok=True)
-            reconstruct_images(csv_path, model, output_dir, device, in_channels)
+            reconstruct_images(csv_path, model, output_dir, device)
 
     elif args.mode == "test":
         if args.model_path is None:
@@ -125,7 +131,7 @@ def main():
             csv_path = predictions_path
             output_dir = os.path.join(dataset_dir, "reconstructed_images")
             os.makedirs(output_dir, exist_ok=True)
-            reconstruct_images(csv_path, model, output_dir, device, in_channels)
+            reconstruct_images(csv_path, model, output_dir, device)
 
 if __name__ == "__main__":
     main()
