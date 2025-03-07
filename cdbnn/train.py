@@ -31,20 +31,6 @@ def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, datas
                 batch_size=64, num_workers=4, device=None, validate=False, val_loader=None, invert_DBNN=False):
     """
     Optimized training function with performance improvements and dynamic model adaptation.
-
-    Args:
-        model: The neural network model to train
-        train_dataset: Training dataset
-        criterion: Loss function
-        optimizer: Optimizer for parameter updates
-        num_epochs: Number of training epochs
-        dataset_name: Name of the dataset for saving
-        batch_size: Batch size for training
-        num_workers: Number of workers for data loading
-        device: Device to use (cpu or cuda)
-        validate: Whether to perform validation
-        val_loader: Validation data loader
-        invert_DBNN: Whether to create an inverse model
     """
     # Determine device
     if device is None:
@@ -77,11 +63,6 @@ def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, datas
     except Exception as e:
         print(f"Error during model validation: {e}")
         print("Attempting to adapt model to the input shape...")
-
-        # If using the updated SubtleDetailCNN, it should handle this automatically
-        # If not, you might need additional logic here
-
-        # Reset optimizer since model parameters may have changed
         optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # Initialize tracking variables
@@ -120,7 +101,6 @@ def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, datas
                     pbar.set_postfix({"loss": loss.item()})
                 except Exception as e:
                     print(f"Error during training iteration: {e}")
-                    # Skip this batch
                     continue
 
         # Calculate epoch loss
@@ -142,35 +122,22 @@ def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, datas
             print(f"Saved new best model with loss: {best_loss:.4f}")
 
             # Extract and save features on CPU for data analysis
-            # Only do this for the best model to avoid unnecessary computation
             save_features(model, train_loader, dataset_name, device)
 
-        if invert_DBNN and epoch == num_epochs - 1:
-            try:
-                # Get number of classes from the model
-                num_classes = model.fc2.out_features
-                in_channels = model.conv1.in_channels
+    # Reconstruct images if invert_DBNN is True
+    if invert_DBNN:
+        print("Reconstructing images using the inverse model...")
+        csv_path = f'data/{dataset_name}/{dataset_name}.csv'
+        output_dir = f'data/{dataset_name}/reconstructed_images'
+        os.makedirs(output_dir, exist_ok=True)
 
-                # Create inverse model with appropriate dimensions
-                inverse_model = InverseSubtleDetailCNN(
-                    in_channels=in_channels,
-                    num_classes=num_classes,
-                    output_size=(sample_inputs.shape[2], sample_inputs.shape[3])
-                ).to(device)
+        # Load the best model for reconstruction
+        model.load_state_dict(torch.load(best_model_path))
+        model.eval()
 
-                # Load best model weights for reference
-                model.load_state_dict(torch.load(best_model_path))
-
-                # Save path for reconstructed images
-                csv_path = f'data/{dataset_name}/{dataset_name}.csv'
-                output_dir = f'data/{dataset_name}/reconstructed_images'
-                os.makedirs(output_dir, exist_ok=True)
-
-                # Reconstruct images function would need to be defined separately
-                # reconstruct_images(csv_path, inverse_model, output_dir, device)
-                print("Inverse model created, but image reconstruction function not called")
-            except Exception as e:
-                print(f"Error during inverse model creation: {e}")
+        # Call the reconstruct_images function
+        reconstruct_images(csv_path, model, output_dir, device)
+        print(f"Reconstructed images saved to {output_dir}")
 
     # Plot confusion matrix for training data
     print("Plotting confusion matrix for training data...")
@@ -184,6 +151,7 @@ def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, datas
         val_predictions, val_labels = get_predictions(model, val_loader, device)
         val_cm = confusion_matrix(val_labels, val_predictions)
         plot_confusion_matrix(val_cm, class_names=train_dataset.classes, title='Validation Confusion Matrix')
+
 
 def get_predictions(model, data_loader, device):
     """
