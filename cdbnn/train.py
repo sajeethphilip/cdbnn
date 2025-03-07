@@ -152,19 +152,37 @@ def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, datas
         reconstruct_images(csv_path, model, output_dir, device)
         print(f"Reconstructed images saved to {output_dir}")
 
-    # Plot confusion matrix for training data
-    print("Plotting confusion matrix for training data...")
+    # Plot and save confusion matrix for training data
+    print("Plotting and saving confusion matrix for training data...")
     train_predictions, train_labels = get_predictions(model, train_loader, device)
     train_cm = confusion_matrix(train_labels, train_predictions)
-    plot_confusion_matrix(train_cm, class_names=train_dataset.classes, title='Training Confusion Matrix')
+    save_confusion_matrix(train_cm, train_dataset.classes, f'data/{dataset_name}/training_confusion_matrix.png', title='Training Confusion Matrix')
 
-    # Plot confusion matrix for validation/test data
+    # Plot and save confusion matrix for validation/test data
     if validate and val_loader is not None:
-        print("Plotting confusion matrix for validation data...")
+        print("Plotting and saving confusion matrix for validation data...")
         val_predictions, val_labels = get_predictions(model, val_loader, device)
         val_cm = confusion_matrix(val_labels, val_predictions)
-        plot_confusion_matrix(val_cm, class_names=train_dataset.classes, title='Validation Confusion Matrix')
+        save_confusion_matrix(val_cm, train_dataset.classes, f'data/{dataset_name}/validation_confusion_matrix.png', title='Validation Confusion Matrix')
 
+def save_confusion_matrix(cm, class_names, save_path, title='Confusion Matrix'):
+    """
+    Save a confusion matrix as an image file.
+
+    Args:
+        cm (numpy.ndarray): Confusion matrix.
+        class_names (list): List of class names.
+        save_path (str): Path to save the confusion matrix image.
+        title (str): Title of the plot.
+    """
+    plt.figure(figsize=(10, 7))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+    plt.title(title)
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.savefig(save_path)  # Save the plot as an image file
+    plt.close()  # Close the plot to free up memory
+    print(f"Confusion matrix saved to {save_path}")
 
 
 def get_predictions(model, data_loader, device):
