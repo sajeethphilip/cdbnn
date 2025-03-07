@@ -179,19 +179,23 @@ def prepare_dataset(data_path, dataset_name):
     return class_folder
 
 
-def reconstruct_images(csv_path, model, output_dir, device):
+def reconstruct_images(csv_path, model, output_dir, device, in_channels):
     """Reconstruct images from features in CSV file."""
     df = pd.read_csv(csv_path)
     features = df.drop(columns=['target']).values
     labels = df['target'].values
 
-    model.eval()
+    # Initialize the inverse model with the correct in_channels
+    inverse_model = InverseSubtleDetailCNN(in_channels=in_channels, num_classes=len(np.unique(labels))).to(device)
+    inverse_model.load_state_dict(model.state_dict())  # Load weights from the trained model
+    inverse_model.eval()
+
     os.makedirs(output_dir, exist_ok=True)
 
     with torch.no_grad():
         for i, (feature, label) in enumerate(zip(features, labels)):
             feature_tensor = torch.tensor(feature, dtype=torch.float32).unsqueeze(0).to(device)
-            reconstructed_image = model(feature_tensor).squeeze(0).cpu().numpy()
+            reconstructed_image = inverse_model(feature_tensor).squeeze(0).cpu().numpy()
             reconstructed_image = (reconstructed_image * 255).astype(np.uint8)  # Scale to 0-255
 
             # Create subfolder based on class label
@@ -200,7 +204,10 @@ def reconstruct_images(csv_path, model, output_dir, device):
 
             # Save the reconstructed image
             image_path = os.path.join(class_dir, f"reconstructed_{i}.png")
-            Image.fromarray(reconstructed_image.transpose(1, 2, 0)).save(image_path)
+            if in_channels == 1:
+                Image.fromarray(reconstructed_image[0], mode='L').save(image_path)  # Grayscale
+            else:
+                Image.fromarray(reconstructed_image.transpose(1, 2, 0), mode='RGB').save(image_path)  # RGB
 
     print(f"Reconstructed images saved to {output_dir}")
 
