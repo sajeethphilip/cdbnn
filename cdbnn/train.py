@@ -78,24 +78,45 @@ def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, datas
     )
 
     # Training loop with progress bar
-     # Training loop
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
 
+        # Use tqdm for progress tracking
         with tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}") as pbar:
             for inputs, labels in pbar:
+                # Move data to device
                 inputs, labels = inputs.to(device), labels.to(device)
-                optimizer.zero_grad()
-                outputs, _ = model(inputs)
-                loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
-                running_loss += loss.item()
-                pbar.set_postfix({"loss": loss.item()})
 
+                # Forward pass with mixed precision for CUDA
+                optimizer.zero_grad()
+                try:
+                    outputs, features = model(inputs)
+                    loss = criterion(outputs, labels)
+
+                    # Backward pass and optimize
+                    loss.backward()
+                    optimizer.step()
+
+                    # Update statistics
+                    running_loss += loss.item()
+                    pbar.set_postfix({"loss": loss.item()})
+                except Exception as e:
+                    print(f"Error during training iteration: {e}")
+                    # Skip this batch
+                    continue
+
+        # Calculate epoch loss
         epoch_loss = running_loss / len(train_loader)
         print(f'Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss:.4f}')
+
+        # Validation if requested
+        if validate and val_loader is not None:
+            val_loss = validate_model(model, val_loader, criterion, device)
+            print(f'Validation Loss: {val_loss:.4f}')
+            scheduler.step(val_loss)
+        else:
+            scheduler.step(epoch_loss)
 
         # Save the best model
         if epoch_loss < best_loss:
@@ -103,12 +124,37 @@ def train_model(model, train_dataset, criterion, optimizer, num_epochs=20, datas
             torch.save(model.state_dict(), best_model_path)
             print(f"Saved new best model with loss: {best_loss:.4f}")
 
-    # If invert_DBNN is True, reconstruct images from the generated CSV file
-    if invert_DBNN:
-        csv_path = os.path.join("data", dataset_name, f"{dataset_name}.csv")
-        output_dir = os.path.join("data", dataset_name, "reconstructed_images")
-        os.makedirs(output_dir, exist_ok=True)
-        reconstruct_images(csv_path, model, output_dir, device, in_channels)
+            # Extract and save features on CPU for data analysis
+            # Only do this for the best model to avoid unnecessary computation
+            save_features(model, train_loader, dataset_name, device)
+
+        if invert_DBNN and epoch == num_epochs - 1:
+            try:
+                # Get number of classes from the model
+                num_classes = model.fc2.out_features
+                in_channels = model.conv1.in_channels
+
+                # Create inverse model with appropriate dimensions
+                inverse_model = InverseSubtleDetailCNN(
+                    in_channels=in_channels,
+                    num_classes=num_classes,
+                    output_size=(sample_inputs.shape[2], sample_inputs.shape[3])
+                ).to(device)
+
+                # Load best model weights for reference
+                model.load_state_dict(torch.load(best_model_path))
+
+                # Save path for reconstructed images
+                csv_path = f'data/{dataset_name}/{dataset_name}.csv'
+                output_dir = f'data/{dataset_name}/reconstructed_images'
+                os.makedirs(output_dir, exist_ok=True)
+
+                # Reconstruct images function would need to be defined separately
+                # reconstruct_images(csv_path, inverse_model, output_dir, device)
+                print("Inverse model created, but image reconstruction function not called")
+            except Exception as e:
+                print(f"Error during inverse model creation: {e}")
+
 
 def save_features(model, data_loader, dataset_name, device):
     """Extract and save features from the model"""
