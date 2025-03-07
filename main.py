@@ -55,18 +55,39 @@ def main():
     num_classes = len(train_dataset.classes)
     print(f"The number of channels input is {in_channels}")
 
-    # Initialize model with the correct in_channels
-    model = SubtleDetailCNN(in_channels=in_channels, num_classes=num_classes)
+    # Determine input size based on the saved model (if it exists)
+    input_size = (224, 224)  # Default input size
+    best_model_path = os.path.join(dataset_dir, "models", "best_model.pth")
+    if not args.fresh_start and os.path.exists(best_model_path):
+        print(f"Loading the best saved model from {best_model_path}")
+        saved_state_dict = torch.load(best_model_path)
+        if 'fc1.weight' in saved_state_dict:
+            # Infer input size from the saved model's fc1.weight
+            saved_feature_size = saved_state_dict['fc1.weight'].shape[1]
+            # Calculate the input size that would result in this feature size
+            h = w = int((saved_feature_size / 128) ** 0.5)
+            input_size = (h, w)
+            print(f"Adjusting input size to {input_size} to match the saved model.")
+
+    # Initialize model with the correct in_channels and input_size
+    model = SubtleDetailCNN(in_channels=in_channels, num_classes=num_classes, input_size=input_size)
 
     # Determine device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
     # Load the best saved model unless fresh_start is True
-    best_model_path = os.path.join(dataset_dir, "models", "best_model.pth")
     if not args.fresh_start and os.path.exists(best_model_path):
         print(f"Loading the best saved model from {best_model_path}")
-        model.load_state_dict(torch.load(best_model_path))
+        try:
+            model.load_state_dict(torch.load(best_model_path))
+        except RuntimeError as e:
+            print(f"Warning: Error loading model state_dict: {e}")
+            print("Attempting to adjust the model architecture to match the saved state_dict...")
+            # Adjust the model's fc1 layer to match the saved state_dict
+            model.fc1 = nn.Linear(saved_state_dict['fc1.weight'].shape[1], 128).to(device)
+            model.load_state_dict(torch.load(best_model_path), strict=False)
+            print("Model successfully loaded with adjusted architecture.")
 
     # Determine mode from config if not specified in command line
     if args.mode is None:
