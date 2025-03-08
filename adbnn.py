@@ -3297,6 +3297,9 @@ class DBNN(GPUDBNN):
                         for dim in range(n_dims)
                     ])  # Shape: (n_dims, batch_size)
 
+                    # Move bin_indices to CPU for efficient counting
+                    bin_indices = bin_indices.cpu()
+
                     # Use scatter_add_ for efficient counting
                     counts = torch.zeros(np.prod(group_bin_sizes), dtype=torch.long, device='cpu')
                     flat_indices = torch.sum(
