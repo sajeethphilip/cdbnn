@@ -15,7 +15,7 @@ class ConfigGenerator:
         self.dataset_dir = dataset_dir
         self.datatype = datatype
         self.config_path = os.path.join(dataset_dir, f"{dataset_name}.json")
-        self.conf_path = os.path.join(dataset_dir, "dataset.conf")
+        self.conf_path = os.path.join(dataset_dir, f"{dataset_name}.conf")
         self.dbnn_conf_path = os.path.join(dataset_dir, "adaptive_dbnn.conf")
 
     def _detect_image_properties(self, train_dir: str) -> Tuple[Tuple[int, int], int]:
