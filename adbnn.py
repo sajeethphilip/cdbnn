@@ -2167,6 +2167,10 @@ class DBNN(GPUDBNN):
             if not weights.is_contiguous():
                 weights = weights.contiguous()
 
+            # Ensure bin_probs and weights have the same shape
+            if bin_probs.shape != weights.shape:
+                raise ValueError(f"Shape mismatch: bin_probs {bin_probs.shape}, weights {weights.shape}")
+
             # Apply weights to probabilities
             weighted_probs = bin_probs * weights  # [n_classes, n_bins, n_bins]
 
